@@ -4,10 +4,10 @@ import {
   SITE_URL,
   createHomeMetadata,
   createToolMetadata,
+  createExternalMetadata,
 } from "@/lib/metadata";
 import { tools } from "@/lib/tools";
 import { isBuiltin, isExternal } from "@web-tools/tool-kit";
-import { urlConfig } from "@root/urls.config";
 import {
   MetadataPreviewCard,
   type MetadataSummary,
@@ -19,19 +19,42 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+type Group = {
+  heading: string;
+  blurb: string;
+  routes: RouteSpec[];
+};
+
 type RouteSpec = {
   label: string;
   path: string;
   meta: Metadata;
 };
 
-const routes: RouteSpec[] = [
-  { label: "Dashboard", path: "/", meta: createHomeMetadata() },
-  ...tools.filter(isBuiltin).map((t) => ({
-    label: t.title,
-    path: `/${t.slug}`,
-    meta: createToolMetadata(t.slug),
-  })),
+const groups: Group[] = [
+  {
+    heading: "Dashboard + built-ins",
+    blurb:
+      "Host routes — metadata + OG image generated from lib/metadata.ts.",
+    routes: [
+      { label: "Dashboard", path: "/", meta: createHomeMetadata() },
+      ...tools.filter(isBuiltin).map((t) => ({
+        label: t.title,
+        path: `/${t.slug}`,
+        meta: createToolMetadata(t.slug),
+      })),
+    ],
+  },
+  {
+    heading: "External tools (host-managed landing)",
+    blurb:
+      "Externals run on their own subdomains, but the dashboard links via /external/<slug> so every share carries host-managed metadata. Click-through opens the real subdomain.",
+    routes: tools.filter(isExternal).map((t) => ({
+      label: t.title,
+      path: `/external/${t.slug}`,
+      meta: createExternalMetadata(t.slug),
+    })),
+  },
 ];
 
 export default function MetadataPreviewPage() {
@@ -50,51 +73,35 @@ export default function MetadataPreviewPage() {
         </p>
       </header>
 
-      <section className="grid grid-cols-1 gap-10 lg:grid-cols-2">
-        {routes.map((r) => (
-          <article key={r.path} className="flex flex-col gap-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="text-lg font-medium">{r.label}</h2>
-              <a
-                href={r.path}
-                className="font-mono text-xs text-(--color-muted-foreground) hover:underline"
-              >
-                {r.path}
-              </a>
-            </div>
-            <MetadataPreviewCard meta={summarize(r)} />
-          </article>
-        ))}
-      </section>
-
-      <ExternalsSection />
+      <div className="flex flex-col gap-14">
+        {groups.map((g) =>
+          g.routes.length === 0 ? null : (
+            <section key={g.heading}>
+              <h2 className="text-xl font-medium">{g.heading}</h2>
+              <p className="mt-1 max-w-prose text-sm text-(--color-muted-foreground)">
+                {g.blurb}
+              </p>
+              <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-2">
+                {g.routes.map((r) => (
+                  <article key={r.path} className="flex flex-col gap-3">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h3 className="text-base font-medium">{r.label}</h3>
+                      <a
+                        href={r.path}
+                        className="font-mono text-xs text-(--color-muted-foreground) hover:underline"
+                      >
+                        {r.path}
+                      </a>
+                    </div>
+                    <MetadataPreviewCard meta={summarize(r)} />
+                  </article>
+                ))}
+              </div>
+            </section>
+          ),
+        )}
+      </div>
     </div>
-  );
-}
-
-function ExternalsSection() {
-  const externals = tools.filter(isExternal);
-  if (externals.length === 0) return null;
-  return (
-    <section className="mt-16">
-      <h2 className="text-lg font-medium">External tools</h2>
-      <p className="mt-1 text-sm text-(--color-muted-foreground)">
-        Out of scope for this previewer — each external app owns its own
-        metadata at its own subdomain. To preview an external's unfurl, run
-        the metadata work inside that submodule.
-      </p>
-      <ul className="mt-4 space-y-1 font-mono text-xs">
-        {externals.map((t) => (
-          <li key={t.slug} className="flex items-center gap-2">
-            <span className="text-(--color-muted-foreground)">{t.title}</span>
-            <span className="text-(--color-muted-foreground)">→</span>
-            <span>
-              {t.subdomain}.{urlConfig.prodExternalBase}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 
