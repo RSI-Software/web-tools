@@ -35,20 +35,22 @@ bun run dev                                # host + every external
 External submodules are **not** bun workspaces — they keep their own
 `package.json` and lockfile. The root `postinstall` hook
 (`scripts/postinstall.sh`) installs them automatically after every root
-`bun install`, reading the list from [`scripts/externals.sh`](../scripts/externals.sh).
-Submodule dirs that aren't present (cloned without `--recurse-submodules`)
-are skipped silently.
+`bun install`, auto-discovering them from [`scripts/externals/`](../scripts/externals/)
+(one `<slug>.toml` per external). Submodule dirs that aren't present are
+skipped silently and re-initialised on demand by `bun run dev`.
 
 `bun run dev` runs `scripts/dev.sh`, which starts the host plus each
-registered external with the right portless flags. It auto-detects
-worktrees and skips externals there (they're singletons that stay running
-in the main checkout — keeps URLs from colliding).
+external. Each external's toml declares its `port` and `dev` command
+(with `{PORT}` substituted at launch). In a worktree the script namespaces
+each external as `<slug>.<branch>.web-tools.localhost` with a
+branch-deterministic port offset, so two checkouts can run side by side
+without collisions.
 
 ## Common scripts
 
 | Command | What it does |
 |---|---|
-| `bun run dev` | Host + every external. In a worktree: host only. |
+| `bun run dev` | Host + every external. Worktrees: branch-namespaced. |
 | `bun run dev:host` | Host only — explicit override, useful when an external is misbehaving. |
 | `bun run build` | Production build of the host. |
 | `bun run typecheck` | `tsc --noEmit` across all four workspaces. |
@@ -69,16 +71,11 @@ URLs in a worktree:
 |---|---|
 | Dashboard | `https://<branch>.web-tools.localhost/` |
 | Built-in tool | `https://<branch>.web-tools.localhost/<slug>` |
-| External tool | `https://<subdomain>.web-tools.localhost/` (singleton — same as main) |
+| External tool | `https://<subdomain>.<branch>.web-tools.localhost/` |
 
-External cards in a worktree-host dashboard link to the **main** external
-URL. If you need a worktree-scoped external instance for testing, start it
-manually from the submodule directory:
-
-```bash
-cd apps/external/<slug>
-portless --name <branch>.<subdomain>.web-tools --app-port <port> bun run dev
-```
+Each worktree gets its own external instances and the host's dashboard
+links rewrite to match. Ports are offset by a branch-deterministic hash so
+the main checkout and any number of worktrees can run concurrently.
 
 ## Troubleshooting
 
@@ -95,14 +92,10 @@ bun install
 
 ### External URL doesn't route under `bun run dev`
 
-Confirm portless got the right `--app-port`. Each external in
-`scripts/dev.sh` is started with an explicit `--app-port` because
-portless's auto-port-detection doesn't recognize `bun run dev`. If you add
-a new external, add its actual port to the script.
-
-If you're in a worktree, externals are intentionally skipped — the script
-prints `[dev] worktree detected — host only`. The main checkout's
-external instance still serves the worktree-host dashboard's card.
+Confirm the `port` in `scripts/externals/<slug>.toml` matches what the
+`dev` command actually opens — that port is what portless proxies to and
+what gets substituted into `{PORT}`. If you added a new external and the
+URL 502s or hangs, that's almost always the mismatch.
 
 ### HTTPS warning in browser
 

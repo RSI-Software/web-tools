@@ -65,8 +65,9 @@ the external's URL.
 git submodule add <repo-url> apps/external/<slug>
 ```
 
-Make sure the submodule's `package.json` has a working `dev` script that
-binds to a known port.
+Pick a port the external will bind to. The registry below tells
+`scripts/dev.sh` how to launch it — you don't need to touch the
+submodule's own `dev` script.
 
 ```ts
 // tools.config.ts — add:
@@ -83,21 +84,21 @@ binds to a known port.
 }
 ```
 
-```bash
-# 2. Register it in scripts/externals.sh by appending one line:
+```toml
+# 2. Create scripts/externals/<slug>.toml:
 #
-#   "apps/external/<slug> <subdomain>.web-tools <port>"
+#   port = <port>                            # what the dev command binds to
+#   dev  = "<launch cmd with {PORT}>"        # e.g. bunx vite --port {PORT}
 #
-# Fields: <directory> <portless-name> <app-port>.
-# <port> must match what the submodule's `dev` script actually listens on.
+# The slug = filename. The directory is conventional (apps/external/<slug>).
 # Both scripts/dev.sh (orchestrator) and scripts/postinstall.sh (deps installer)
-# read this list automatically.
+# auto-discover every toml under scripts/externals/.
 ```
 
 ```bash
 # 3. Install everything (root + new external) and start.
 bun install            # root postinstall installs the submodule's deps too
-bun run dev            # host + every external (worktrees auto-skip externals)
+bun run dev            # host + every external (worktrees too, branch-namespaced)
 ```
 
 The dashboard card opens `https://<subdomain>.web-tools.localhost/` in a

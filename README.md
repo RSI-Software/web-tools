@@ -25,7 +25,7 @@ portless · worktrunk.
 ```bash
 git submodule update --init --recursive
 bun install        # root + every external (postinstall installs submodules)
-bun run dev        # host + every external (worktrees auto-skip externals)
+bun run dev        # host + every external (worktrees too, branch-namespaced)
 bun run dev:host   # host only — explicit, useful when an external is misbehaving
 ```
 
@@ -44,7 +44,7 @@ packages/
   tailwind-preset/       # Tailwind v4 theme
 tools.config.ts          # tool registry
 urls.config.ts           # dev/prod URL bases
-scripts/                 # externals.sh (list) + dev.sh (orchestrator) + postinstall.sh
+scripts/                 # externals/<slug>.toml registry + dev.sh + postinstall.sh
 .wt.toml                 # worktrunk hooks
 ```
 
@@ -62,8 +62,8 @@ scripts/                 # externals.sh (list) + dev.sh (orchestrator) + postins
 ```
 
 Then create `apps/host/app/my-tool/page.tsx` (built-in) — or
-`git submodule add … apps/external/my-tool` plus a line in `scripts/dev.sh`
-(external).
+`git submodule add … apps/external/my-tool` plus a `scripts/externals/my-tool.toml`
+declaring its port and dev command (external).
 
 Full recipe: [`docs/adding-tools.md`](docs/adding-tools.md).
 
