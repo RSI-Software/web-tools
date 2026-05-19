@@ -1,6 +1,10 @@
+import type { Metadata } from "next";
 import { tools } from "@/lib/tools";
 import { ToolCard } from "@/components/tool-card";
 import { BackgroundBeams } from "@web-tools/ui/components/background-beams";
+import { createHomeMetadata } from "@/lib/metadata";
+
+export const metadata: Metadata = createHomeMetadata();
 
 export default function DashboardPage() {
   return (
