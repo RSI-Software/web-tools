@@ -15,14 +15,16 @@ packages/
   tailwind-preset/       # Tailwind v4 theme tokens
 tools.config.ts          # tool registry (source of truth)
 urls.config.ts           # dev/prod URL bases
-scripts/                 # externals.sh (list) + dev.sh (orchestrator) + postinstall.sh
+scripts/                 # externals/<slug>.toml registry + dev.sh + postinstall.sh
 .wt.toml                 # worktrunk hooks
 bunfig.toml              # linker = "hoisted" (required, see below)
 ```
 
-There is no `portless.json` — it was vestigial. `scripts/externals.sh` is
-the single source of truth for which external apps exist; `scripts/dev.sh`
-(orchestrator) and `scripts/postinstall.sh` (deps installer) both read it.
+There is no `portless.json` — it was vestigial. Externals are auto-discovered
+from `scripts/externals/<slug>.toml`; that directory is the single source of
+truth, consumed by `scripts/dev.sh` (orchestrator) and `scripts/postinstall.sh`
+(deps installer). Each toml declares `port` and `dev` (the launch command,
+with `{PORT}` substituted at start time).
 
 ## Tool flavors
 
@@ -36,7 +38,7 @@ the single source of truth for which external apps exist; `scripts/dev.sh`
 ### External
 - A git submodule at `apps/external/<slug>/`.
 - Can be any framework — Next, Vite, Astro, plain SPA.
-- Runs on its own dev server, registered in `scripts/dev.sh`.
+- Runs on its own dev server, configured in `scripts/externals/<slug>.toml`.
 - Owns its origin: `<subdomain>.<base>`. The dashboard links out; the host
   does not proxy or path-mount externals.
 
@@ -49,15 +51,17 @@ The environment determines the base.
 |---|---|---|---|
 | Dashboard | `https://web-tools.localhost/` | `https://<wt>.web-tools.localhost/` | `https://web-tools.donjor.net/` |
 | Built-in | `https://web-tools.localhost/<slug>` | `https://<wt>.web-tools.localhost/<slug>` | `https://web-tools.donjor.net/<slug>` |
-| External | `https://<subdomain>.web-tools.localhost/` | same as main (singleton — see below) | `https://<subdomain>.donjor.net/` |
+| External | `https://<subdomain>.web-tools.localhost/` | `https://<subdomain>.<wt>.web-tools.localhost/` | `https://<subdomain>.donjor.net/` |
 
 Worktree behavior: portless auto-prefixes the host's name with the worktree
-slug. The host's dev script uses `portless run --name web-tools next dev`
-which produces that prefix. **Externals are singletons** across worktrees —
-they keep running on the main URL while worktree-host dashboards link to
-them. If you genuinely need a per-worktree external instance, start it
-manually with `portless --name <wt>.<subdomain>.web-tools --app-port <N>
-bun run dev` from the submodule.
+slug (the host's dev script uses `portless run --name web-tools next dev`).
+`scripts/dev.sh` namespaces each external's portless route the same way —
+`<sub>.<wt>.web-tools.localhost` — and offsets its port by a
+branch-deterministic hash so the main checkout and any number of worktrees
+can run concurrently without colliding. The host receives
+`WEB_TOOLS_WT_BRANCH` and `toolUrl()` rewrites external URLs to match, so
+the worktree dashboard's cards link to its own external instances rather
+than the main checkout's.
 
 Bases live in [`urls.config.ts`](../urls.config.ts) and are applied by `toolUrl()` in `packages/tool-kit/src/index.ts`:
 
@@ -89,15 +93,16 @@ it in `tools.config.ts`.
 ## Dev orchestration
 
 ```bash
-bun run dev         # host + every external (worktrees auto-skip externals)
+bun run dev         # host + every external (worktrees too, branch-namespaced)
 bun run dev:host    # host only — explicit override
 ```
 
 `bun run dev` is `bash scripts/dev.sh`. The script:
 
 - starts the host via the host workspace's `dev` (which is `portless run --name web-tools …` — picks up the worktree prefix automatically).
-- starts each external in its own subshell with explicit `--name` and `--app-port` flags. Portless can't infer the port from `bun run dev` because the `bun` runner isn't in portless's auto-detect list — passing `--app-port` is required.
-- detects worktrees via `[ -f .git ]` and skips the externals block when running there, because externals are singletons that stay running in the main checkout. The worktree-host's dashboard still links to those singleton URLs.
+- auto-discovers externals by globbing `scripts/externals/*.toml`. Each toml's `dev` command runs through portless with explicit `--name` and `--app-port` (portless can't infer the port from arbitrary launchers, so the toml's `port` is authoritative). The `{PORT}` placeholder in `dev` is substituted at launch, which is what makes the launcher framework-agnostic — vite, next, astro, anything that accepts a port flag.
+- detects worktrees via `[ -f .git ]` and, in that mode, namespaces each external's portless route as `<slug>.<branch>.web-tools.localhost`, offsets the port by a branch-deterministic hash, and exports `WEB_TOOLS_WT_BRANCH` so the host's `toolUrl()` rewrites dashboard cards to match.
+- auto-initialises missing submodules (`git submodule update --init` + `bun install`) so a fresh worktree boots straight from `bun run dev`.
 - traps `INT/TERM/EXIT` and kills children on Ctrl-C.
 
 If an external is misbehaving or you want a clean host-only run, use

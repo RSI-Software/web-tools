@@ -72,7 +72,7 @@ Direct git work (`cd /srv/web-tools && git fetch && …`) is fine — setgid + u
 
 ## Adding a new external tool
 
-1. **Repo:** add submodule, append a `tools.config.ts` entry, append a `start` line to `scripts/dev-all.sh`. (Detail: [`adding-tools.md`](adding-tools.md).)
+1. **Repo:** add submodule, append a `tools.config.ts` entry, create `scripts/externals/<slug>.toml` with `port` + `dev` cmd. (Detail: [`adding-tools.md`](adding-tools.md).)
 2. **Repo:** add a new PM2 app to `ecosystem.config.cjs` — next free port in the reserved range. Use the external's own `node_modules/.bin/<binary>` as the script (absolute path from the repo root).
 3. **Cloudflare DNS:** one new proxied CNAME `<slug>.donjor.net → <tunnel>.cfargotunnel.com`.
 4. **Tunnel:** add one ingress entry `hostname: <slug>.donjor.net` to `cloudflared/config.yml`, restart cloudflared.

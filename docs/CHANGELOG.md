@@ -9,6 +9,20 @@ for fixes-only, **MAJOR** only on breaking external-facing changes.
 
 ---
 
+## [0.3.0] — 2026-05-19
+
+### Added
+- `scripts/externals/<slug>.toml` per-external registry. Each entry declares `port` and `dev` (with `{PORT}` substituted at launch) — the orchestrator is now framework-agnostic (vite, next, astro, anything that accepts a port flag).
+- `WEB_TOOLS_WT_BRANCH` env var read by `toolUrl()` so worktree dashboards link to their own externals.
+
+### Changed
+- `bun run dev` now starts externals in worktrees too, namespaced as `<slug>.<branch>.web-tools.localhost` with a branch-deterministic port offset. Main checkout + any number of worktrees can run concurrently without portless route or vite port collisions.
+- `scripts/dev.sh` auto-initialises missing submodules (`git submodule update --init` + `bun install`) so a fresh worktree boots straight from `bun run dev`.
+- Docs (architecture / setup / adding-tools / deploy / `apps/external/README.md`) updated to the new registry contract.
+
+### Removed
+- `scripts/externals.sh` — replaced by the auto-discovered `scripts/externals/<slug>.toml` registry.
+
 ## [0.2.1] — 2026-05-19
 
 ### Fixed
