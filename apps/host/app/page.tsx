@@ -8,7 +8,7 @@ export const metadata: Metadata = createHomeMetadata();
 
 export default function DashboardPage() {
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative flex-1 overflow-hidden">
       <BackgroundBeams className="opacity-60" />
       <div className="relative z-10 mx-auto max-w-6xl px-6 py-16">
         <header className="mb-12">
