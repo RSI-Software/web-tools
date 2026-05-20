@@ -16,6 +16,11 @@
     "start": "bun run --filter @web-tools/host start",
     "typecheck": "bun run --filter '*' typecheck",
     "check": "bun run typecheck",
+    "db:generate": "bun run --filter @web-tools/host db:generate",
+    "db:migrate": "bun run --filter @web-tools/host db:migrate",
+    "db:migrate:dev": "bun run --filter @web-tools/host db:migrate:dev",
+    "db:status": "bun run --filter @web-tools/host db:status",
+    "db:studio": "bun run --filter @web-tools/host db:studio",
     "postinstall": "bash scripts/postinstall.sh",
     "clean": "rm -rf node_modules apps/*/node_modules apps/*/.next apps/external/*/node_modules packages/*/node_modules"
   },
